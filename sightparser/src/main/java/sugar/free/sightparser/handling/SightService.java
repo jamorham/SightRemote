@@ -215,7 +215,9 @@ public class SightService extends Service {
                 if (allowed) {
                     getDataStorage().set("package-allowed-" + packageName, "yes");
                 } else {
-                    if (packageName.startsWith(Pref.CHANGE_PREFS_SPECIAL_CASE)) {
+                    if (packageName.startsWith(FirewallConstraint.USER_AUTHORIZATION_SPECIAL_CASE)) {
+                        firewall.parseAuthorization(packageName);
+                    } else if (packageName.startsWith(Pref.CHANGE_PREFS_SPECIAL_CASE)) {
                         firewall.parsePreference(packageName);
                     } else {
                         getDataStorage().remove("package-allowed-" + packageName);
@@ -317,6 +319,7 @@ public class SightService extends Service {
             connectionThread = new ConnectionThread(mac, pairing);
             connectionThread.start();
         }
+
     }
 
     public void disconnect(boolean reconnect) {

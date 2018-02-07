@@ -1,14 +1,21 @@
 package sugar.free.sightparser.handling;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import sugar.free.sightparser.Pref;
 import sugar.free.sightparser.applayer.messages.AppLayerMessage;
+import sugar.free.sightparser.applayer.messages.remote_control.CancelTBRMessage;
 import sugar.free.sightparser.applayer.messages.remote_control.ChangeTBRMessage;
 import sugar.free.sightparser.applayer.messages.remote_control.ExtendedBolusMessage;
+import sugar.free.sightparser.applayer.messages.remote_control.MultiwaveBolusMessage;
 import sugar.free.sightparser.applayer.messages.remote_control.SetTBRMessage;
 import sugar.free.sightparser.applayer.messages.remote_control.StandardBolusMessage;
 
@@ -25,30 +32,51 @@ import sugar.free.sightparser.applayer.messages.remote_control.StandardBolusMess
 
 public class FirewallConstraint {
 
-    private static final String FIREWALL_STORAGE = "SERVICE_FIREWALL";
+    public static final String FIREWALL_STORAGE = "SERVICE_FIREWALL";
+    public static final String USER_AUTHORIZATION_SPECIAL_CASE = "USER_AUTHORIZATION";
+    public static final String USER_AUTHORIZATION_SPECIAL_CASE_DELIMITER = "^";
     private static final String TAG = "INSIGHTFIREWALL";
-    private static final Map<Class, String> lookup;
+    private static final String REQUEST_AUTH_EXTRA = "REQUEST_AUTH_EXTRA";
+    private static final String REQUEST_AUTH_UUID = "REQUEST_AUTH_UUID";
+    private static final Map<Class, String> block_lookup;
+    private static final Map<Class, String> auth_lookup;
     private static final boolean d = false;
+    private static final long AUTH_TIMEOUT_MS = 20000;
+    private static volatile String pending_uuid = null;
+    private static volatile long waiting_auth = 0;
 
     static {
-        lookup = new HashMap<>();
+        block_lookup = new HashMap<>();
         // these message types will be restricted by the named preference item
-        lookup.put(StandardBolusMessage.class, "firewall_allow_standard_bolus");
-        lookup.put(ExtendedBolusMessage.class, "firewall_allow_extended_bolus");
-        lookup.put(ChangeTBRMessage.class, "firewall_allow_temporary_basal");
-        lookup.put(SetTBRMessage.class, "firewall_allow_temporary_basal");
+        block_lookup.put(StandardBolusMessage.class, "firewall_allow_standard_bolus");
+        block_lookup.put(ExtendedBolusMessage.class, "firewall_allow_extended_bolus");
+        block_lookup.put(MultiwaveBolusMessage.class, "firewall_allow_extended_bolus");
+        block_lookup.put(ChangeTBRMessage.class, "firewall_allow_temporary_basal");
+        block_lookup.put(SetTBRMessage.class, "firewall_allow_temporary_basal");
+        block_lookup.put(CancelTBRMessage.class, "firewall_allow_temporary_basal");
+    }
+
+    static {
+        auth_lookup = new HashMap<>();
+        // these message types will be restricted by the named preference item
+        auth_lookup.put(StandardBolusMessage.class, "firewall_password_boluses");
+        auth_lookup.put(ExtendedBolusMessage.class, "firewall_password_boluses");
+        auth_lookup.put(MultiwaveBolusMessage.class, "firewall_password_boluses");
     }
 
     private final Pref pref;
+    private final Map<String, Boolean> authorizations = new ConcurrentHashMap<>();
+    private Context context;
 
     public FirewallConstraint(Context context) {
+        this.context = context;
         pref = Pref.get(context, FIREWALL_STORAGE);
         initializeDefaults();
     }
 
     private void initializeDefaults() {
         // set unset class types to allow by default
-        for (Map.Entry<Class, String> item : lookup.entrySet()) {
+        for (Map.Entry<Class, String> item : block_lookup.entrySet()) {
             if (!pref.isSet(item.getValue())) {
                 pref.setBoolean(item.getValue(), true);
             }
@@ -60,9 +88,16 @@ public class FirewallConstraint {
         pref.parsePrefs(TAG, packageName);
     }
 
+    String descriptionFromAppLayer(AppLayerMessage msg) {
+        if (msg instanceof StandardBolusMessage) {
+            return "Standard Bolus" + " " + ((StandardBolusMessage) msg).getAmount() + "U";
+        }
+        return "";
+    }
+
     boolean isAllowed(AppLayerMessage msg) {
         if (msg == null) return true; // not sure if this should be false as its invalid
-        final String prefString = lookup.get(msg.getClass());
+        final String prefString = block_lookup.get(msg.getClass());
         if (prefString == null) {
             if (d) android.util.Log.e(TAG, "FIREWALL default Allow: " + msg);
             return true; // default allow
@@ -71,9 +106,86 @@ public class FirewallConstraint {
         if (!allow) {
             android.util.Log.e(TAG, "FIREWALL Blocked: " + msg);
         } else {
+            // check if restricted by authentication
+            final String authPrefString = auth_lookup.get(msg.getClass());
+            if ((authPrefString != null) && pref.getBooleanDefaultFalse(authPrefString)) {
+                // if restricted by fingerprint
+                return busyWaitForAuthorization(descriptionFromAppLayer(msg));
+            }
             android.util.Log.e(TAG, "FIREWALL Allow: " + msg);
         }
         return allow;
+    }
+
+    void requestAuth(Context context, String uuid, String reason) {
+        android.util.Log.e(TAG, "Requesting user authentication");
+        context.startActivity(new Intent()
+                .setComponent(new ComponentName("sugar.free.sightremote", "sugar.free.sightremote.activities.security.FingerprintActivity"))
+                .putExtra(REQUEST_AUTH_EXTRA, reason)
+                .putExtra(REQUEST_AUTH_UUID, uuid)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
+    private String getAuthorization(String reason) {
+        final String uuid = UUID.randomUUID().toString();
+        requestAuth(context, uuid, reason);
+        return uuid;
+    }
+
+    private boolean busyWaitForAuthorization(String reason) {
+        synchronized (this) {
+            if ((pending_uuid != null) && (System.currentTimeMillis() - waiting_auth < AUTH_TIMEOUT_MS * 2)) {
+                android.util.Log.d("INSIGHTFIREWALL", "Already a pending uuid waiting: " + pending_uuid);
+                return false;
+            }
+            pending_uuid = getAuthorization(reason);
+            waiting_auth = System.currentTimeMillis();
+        }
+
+        boolean result = false;
+        while (System.currentTimeMillis() - waiting_auth < AUTH_TIMEOUT_MS) {
+            android.util.Log.d("INSIGHTFIREWALL", "Busy wait for auth: " + pending_uuid);
+            if (authorizations.get(pending_uuid) != null) {
+                result = authorizations.get(pending_uuid);
+                break;
+            }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                //
+            }
+        }
+        authorizations.remove(pending_uuid);
+        android.util.Log.d("INSIGHTFIREWALL", "Returning authorization result: " + result);
+        pending_uuid = null;
+        return result;
+    }
+
+
+    void parseAuthorization(String msg) {
+        String tag = "INSIGHTFIREWALL";
+        if (msg.startsWith(USER_AUTHORIZATION_SPECIAL_CASE)) {
+            final StringTokenizer st = new StringTokenizer(msg, USER_AUTHORIZATION_SPECIAL_CASE_DELIMITER);
+            if (st.countTokens() == 3) {
+                st.nextToken(); // skip prefix
+                final String uuid = st.nextToken();
+                final String value = st.nextToken();
+                android.util.Log.d(tag, "Setting: " + uuid + " -> " + value);
+                if ((uuid != null) && (uuid.length() > 0)) {
+                    switch (value) {
+                        case "true":
+                            authorizations.put(uuid, true);
+                            break;
+                        case "false":
+                            authorizations.put(uuid, false);
+                            break;
+                    }
+                }
+
+            } else {
+                android.util.Log.d(tag, "Invalid number of auth tokens: " + st.countTokens());
+            }
+        }
     }
 
 }

@@ -56,24 +56,25 @@ public class StandardBolusActivity extends SightActivity implements TaskRunner.R
 
     @Override
     public void onResult(Object result) {
-        if (result instanceof BolusPreparationTaskRunner.PreperationResult) {
-            preperationResult = (BolusPreparationTaskRunner.PreperationResult) result;
-            runOnUiThread(() -> bolusAmountPicker.adjustNumberPickers(preperationResult.getMaxBolusAmount()));
-            if (preperationResult.isPumpStarted()) {
-                if (preperationResult.getAvailableBoluses().isStandardAvailable()) {
-                    hideManualOverlay();
-                    dismissSnackbar();
+        runOnUiThread(() -> {
+            if (result instanceof BolusPreparationTaskRunner.PreperationResult) {
+                preperationResult = (BolusPreparationTaskRunner.PreperationResult) result;
+                bolusAmountPicker.adjustNumberPickers(preperationResult.getMaxBolusAmount());
+                if (preperationResult.isPumpStarted()) {
+                    if (preperationResult.getAvailableBoluses().isStandardAvailable()) {
+                        hideManualOverlay();
+                        dismissSnackbar();
+                    } else {
+                        showManualOverlay();
+                        showSnackbar(Snackbar.make(getRootView(), R.string.bolus_type_not_available, Snackbar.LENGTH_INDEFINITE));
+                    }
                 } else {
                     showManualOverlay();
-                    showSnackbar(Snackbar.make(getRootView(), R.string.bolus_type_not_available, Snackbar.LENGTH_INDEFINITE));
+                    showSnackbar(Snackbar.make(getRootView(), R.string.pump_not_started, Snackbar.LENGTH_INDEFINITE));
                 }
-            } else {
-                showManualOverlay();
-                showSnackbar(Snackbar.make(getRootView(), R.string.pump_not_started, Snackbar.LENGTH_INDEFINITE));
-            }
-        } else finish();
+            } else finish();
+        });
     }
-
 
     @Override
     protected void connectedToService() {
@@ -106,7 +107,7 @@ public class StandardBolusActivity extends SightActivity implements TaskRunner.R
                 .setMessage(HTMLUtil.getHTML(R.string.standard_bolus_confirmation, UnitFormatter.formatUnits(bolusAmountPicker.getPickerValue())))
                 .setPositiveButton(R.string.yes, (dialog, which) -> {
                     showManualOverlay();
-                    taskRunner.fetch(StandardBolusActivity.this);
+                    taskRunner.fetchOnBackgroundThread(StandardBolusActivity.this);
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();

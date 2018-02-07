@@ -24,7 +24,6 @@ public class Pref {
 
     private static final String TAG = "Pref";
     private static SharedPreferences prefs;
-    private static Pref instance;
 
     private Pref(Context context, String prefix) {
         reloadPrefs(context, prefix);
@@ -32,15 +31,9 @@ public class Pref {
 
     @NonNull
     public static Pref get(Context context, String prefix) {
-        if (instance == null) {
-            instance = new Pref(context, prefix);
-        }
-        return instance;
+            return new Pref(context, prefix);
     }
 
-    public static Pref get() {
-        return instance;
-    }
 
     public void reloadPrefs(Context context, String prefix) {
         prefs = context.getSharedPreferences(prefix, MODE_PRIVATE);

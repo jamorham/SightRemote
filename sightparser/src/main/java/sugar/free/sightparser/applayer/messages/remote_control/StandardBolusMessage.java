@@ -1,5 +1,6 @@
 package sugar.free.sightparser.applayer.messages.remote_control;
 
+import lombok.Getter;
 import lombok.Setter;
 import sugar.free.sightparser.pipeline.ByteBuf;
 
@@ -7,6 +8,7 @@ public class StandardBolusMessage extends BolusMessage {
 
     private static final long serialVersionUID = 1L;
 
+    @Getter
     @Setter
     private float amount;
 

@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE"/>
 
@@ -62,7 +63,8 @@
             android:name=".activities.AlertActivity"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar.NoStatusBackground" />
-        <activity android:name=".activities.FirewallActivity" />
+        <activity android:name=".activities.FirewallActivity" android:windowSoftInputMode="stateHidden" />
+        <activity android:name=".activities.security.FingerprintActivity" android:windowSoftInputMode="stateHidden" />
 
         <service
             android:name=".services.HistorySyncService"

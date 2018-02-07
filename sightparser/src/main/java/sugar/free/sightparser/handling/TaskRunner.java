@@ -11,7 +11,7 @@ public abstract class TaskRunner {
 
     private SightServiceConnector serviceConnector;
     private ResultCallback resultCallback;
-    private boolean run;
+    private volatile boolean run;
     private Object result;
     private Exception error;
     private CountDownLatch resultLatch = new CountDownLatch(1);
@@ -31,7 +31,7 @@ public abstract class TaskRunner {
         if (statusCallbackRegistered) serviceConnector.removeStatusCallback(statusCallback);
     }
 
-    public void fetch(ResultCallback resultCallback) {
+    public synchronized void fetch(ResultCallback resultCallback) {
         if (run) throw new IllegalStateException("TaskRunners can only be run once.");
         run = true;
         this.resultCallback = resultCallback;
@@ -46,6 +46,15 @@ public abstract class TaskRunner {
         resultLatch.wait();
         if (error != null) throw error;
         return result;
+    }
+
+    public void fetchOnBackgroundThread(final ResultCallback resultCallback) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                fetch(resultCallback);
+            }
+        }).start();
     }
 
     public void cancel() {

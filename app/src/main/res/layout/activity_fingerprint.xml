@@ -1,0 +1,83 @@
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:appx="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="display"
+            type="sugar.free.sightremote.activities.security.FingerprintActivity.DisplayElements" />
+    </data>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/testButtonLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="10dp"
+                android:orientation="vertical"
+                appx:showIfTrue="@{display.testButtons}">
+
+                <Button
+                    android:id="@+id/authorize_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginRight="4dp"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/approve"
+                    android:textColor="?android:attr/textColorPrimaryInverse" />
+
+                <Button
+                    android:id="@+id/purchase_button_not_invalidated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginRight="4dp"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/approval_not_invalidated"
+                    android:textColor="?android:attr/textColorPrimaryInverse" />
+
+                <TextView
+                    android:id="@+id/purchase_button_not_invalidated_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginRight="4dp"
+                    android:gravity="end"
+                    android:text="@string/approval_button_not_invalidated_description"
+                    android:textAlignment="gravity" />
+
+                <TextView
+                    android:id="@+id/confirmation_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingStart="16dp"
+                    android:text="@string/fingerprint_done"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/encrypted_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingStart="16dp"
+                    android:text="@string/fingerprint_done"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</layout>
