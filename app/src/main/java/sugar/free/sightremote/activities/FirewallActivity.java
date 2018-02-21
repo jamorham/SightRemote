@@ -11,6 +11,7 @@ import sugar.free.sightremote.R;
 import sugar.free.sightremote.activities.security.FingerPrintViewHelper;
 import sugar.free.sightremote.activities.security.FingerprintActivity;
 import sugar.free.sightremote.adapters.PrefsViewImpl;
+import sugar.free.sightremote.adapters.SlidingWindowViewHelper;
 import sugar.free.sightremote.databinding.ActivityFirewallBinding;
 
 /**
@@ -34,8 +35,11 @@ public class FirewallActivity extends SightActivity {
 
         final ActivityFirewallBinding binding = ActivityFirewallBinding.inflate(getLayoutInflater());
         final PrefsViewImpl pview = new PrefsViewImpl(getApplicationContext(), "ACTIVITY_FIREWALL", getServiceConnector());
+        final SlidingWindowViewHelper slide = new SlidingWindowViewHelper(getApplicationContext(), "ACTIVITY_FIREWALL", getServiceConnector());
         binding.setFinger(new FingerPrintViewHelper(getApplicationContext(), pview));
         binding.setPrefs(pview);
+        binding.setSlide(slide);
+
         setContentView(binding.getRoot());
     }
 

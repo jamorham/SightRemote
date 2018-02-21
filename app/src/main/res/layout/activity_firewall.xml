@@ -10,6 +10,11 @@
         <variable
             name="finger"
             type="sugar.free.sightremote.activities.security.FingerPrintViewHelper" />
+
+        <variable
+            name="slide"
+            type="sugar.free.sightremote.adapters.SlidingWindowViewHelper" />
+
     </data>
 
     <ScrollView
@@ -94,8 +99,71 @@
                         android:textAlignment="textEnd"
                         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
 
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/slidingWindowLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textView3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:text="@{slide.description}" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:padding="10dp"
+                        appx:showIfTrue="@{safeUnbox(prefs[`firewall_password_boluses`])}">
+
+                        <EditText
+                            android:id="@+id/editText2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ems="3"
+                            android:gravity="center_horizontal|center"
+                            android:inputType="numberDecimal"
+                            android:text="@={slide.units}" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical|center_horizontal"
+                            android:text="U per" />
+
+                        <EditText
+                            android:id="@+id/editText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="right"
+                            android:layout_weight="1"
+                            android:ems="3"
+                            android:gravity="top|center_horizontal"
+                            android:inputType="number"
+                            android:text="@={slide.period}" />
+
+                        <Spinner
+                            android:id="@+id/spinner"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="left|center_vertical"
+                            android:layout_weight="1"
+                            android:entries="@array/Periods"
+                            android:onItemSelected="@{(parent, view, position, id) -> slide.onSelectedPeriodItem(parent, view, position, id)}"
+                            android:selectedItemPosition="@{slide.selectedPeriodItem}"
+                            android:spinnerMode="dropdown" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
+
 
                 <LinearLayout
                     android:id="@+id/passwordLayout"

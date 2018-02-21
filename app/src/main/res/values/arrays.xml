@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="Periods">
+        <item>Minute</item>
+        <item>Hour</item>
+        <item>Day</item>
+    </string-array>
+    <integer-array name="PeriodsValues">
+        <item name="Minute">60000</item>
+        <item name="Hour">3600000</item>
+        <item name="Day">86400000</item>
+    </integer-array>
+</resources>
