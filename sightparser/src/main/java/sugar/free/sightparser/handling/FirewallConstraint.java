@@ -4,6 +4,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -42,6 +44,8 @@ public class FirewallConstraint {
     private static final Map<Class, String> auth_lookup;
     private static final boolean d = false;
     private static final long AUTH_TIMEOUT_MS = 20000;
+    private static final String PREF_SLIDING_WINDOW_MS = "sliding-window-ms";
+    private static final String PREF_SLIDING_WINDOW_LIMIT = "sliding-window-limit";
     private static volatile String pending_uuid = null;
     private static volatile long waiting_auth = 0;
 
@@ -65,13 +69,42 @@ public class FirewallConstraint {
     }
 
     private final Pref pref;
+    private SlidingWindowConstraint window;
     private final Map<String, Boolean> authorizations = new ConcurrentHashMap<>();
     private Context context;
 
     public FirewallConstraint(Context context) {
         this.context = context;
         pref = Pref.get(context, FIREWALL_STORAGE);
+        initializeSlidingWindow();
         initializeDefaults();
+    }
+
+    private synchronized void initializeSlidingWindow() {
+        window = new SlidingWindowConstraint(getLimit(), getWindowMS(), "generic-bolus-restriction", true, context);
+    }
+
+    private static double roundDouble(double value, int places) {
+        if (places < 0) throw new IllegalArgumentException("Invalid decimal places");
+        BigDecimal bd = new BigDecimal(value);
+        bd = bd.setScale(places, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
+
+    private double getLimit() {
+        try {
+            return Double.parseDouble(pref.getString(PREF_SLIDING_WINDOW_LIMIT, "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private long getWindowMS() {
+        try {
+            return Long.parseLong(pref.getString(PREF_SLIDING_WINDOW_MS, "86400000"));
+        } catch (NumberFormatException e) {
+            return 86400000;
+        }
     }
 
     private void initializeDefaults() {
@@ -86,13 +119,31 @@ public class FirewallConstraint {
     void parsePreference(String packageName) {
         android.util.Log.d(TAG, "Updating preferences");
         pref.parsePrefs(TAG, packageName);
+        initializeSlidingWindow(); // this is a bit expensive but shouldn't happen too often
     }
 
     String descriptionFromAppLayer(AppLayerMessage msg) {
         if (msg instanceof StandardBolusMessage) {
             return "Standard Bolus" + " " + ((StandardBolusMessage) msg).getAmount() + "U";
         }
+        // TODO add msgs for extended and multiwave
+        // TODO remember to work with activities background task runner
+
         return "";
+    }
+
+    // get the total insulin if this is any kind of bolus
+    private float bolusValue(AppLayerMessage msg) {
+        if (msg instanceof StandardBolusMessage) {
+            return ((StandardBolusMessage) msg).getAmount();
+        }
+        if (msg instanceof ExtendedBolusMessage) {
+            return ((ExtendedBolusMessage) msg).getAmount();
+        }
+        if (msg instanceof MultiwaveBolusMessage) {
+            return ((MultiwaveBolusMessage) msg).getAmount() + ((MultiwaveBolusMessage) msg).getDelayedAmount();
+        }
+        return 0;
     }
 
     boolean isAllowed(AppLayerMessage msg) {
@@ -110,6 +161,11 @@ public class FirewallConstraint {
             final String authPrefString = auth_lookup.get(msg.getClass());
             if ((authPrefString != null) && pref.getBooleanDefaultFalse(authPrefString)) {
                 // if restricted by fingerprint
+                final double amount = roundDouble(bolusValue(msg), 3);
+                if ((amount > 0) && (window.checkAndAddIfAcceptable(amount))) {
+                    android.util.Log.e(TAG, "Sliding window Allow: " + msg);
+                    return true;
+                }
                 return busyWaitForAuthorization(descriptionFromAppLayer(msg));
             }
             android.util.Log.e(TAG, "FIREWALL Allow: " + msg);
@@ -160,7 +216,6 @@ public class FirewallConstraint {
         pending_uuid = null;
         return result;
     }
-
 
     void parseAuthorization(String msg) {
         String tag = "INSIGHTFIREWALL";

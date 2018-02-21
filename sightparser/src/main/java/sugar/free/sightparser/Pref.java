@@ -23,7 +23,7 @@ public class Pref {
     public static final String CHANGE_PREFS_SPECIAL_CASE_DELIMITER = "^";
 
     private static final String TAG = "Pref";
-    private static SharedPreferences prefs;
+    private SharedPreferences prefs;
 
     private Pref(Context context, String prefix) {
         reloadPrefs(context, prefix);
@@ -31,7 +31,7 @@ public class Pref {
 
     @NonNull
     public static Pref get(Context context, String prefix) {
-            return new Pref(context, prefix);
+        return new Pref(context, prefix);
     }
 
 
@@ -62,6 +62,17 @@ public class Pref {
         prefs.edit().putLong(pref, lng).apply();
         return true;
     }
+
+    public void setDouble(String name, double value) {
+        setLong(name, Double.doubleToRawLongBits(value));
+    }
+
+      public double getDouble(String name, double def) {
+        final long result = getLong(name, Long.MIN_VALUE);
+        if (result == Long.MIN_VALUE) return def;
+        return Double.longBitsToDouble(result);
+    }
+
 
     public int getInt(final String pref, final int def) {
         return prefs.getInt(pref, def);
