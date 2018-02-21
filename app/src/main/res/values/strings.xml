@@ -84,7 +84,7 @@
     <string name="safety_warning_text1">Activating the Insulin service allows this app to deliver or adjust insulin delivery on the pump!  If the pump is ever going to be connected to a person then this activation must only be performed by a medical professional responsible for their care.</string>
     <string name="connected_to_a_person">Connected to a person</string>
     <string name="never_connected_to_a_person">Never connected to a person</string>
-    <string name="are_you_a_qualified_medical_professional">Are you a qualified medicial professional responsible for the care of the person who\'s insulin pump this application is paired with?</string>
+    <string name="are_you_a_qualified_medical_professional">Are you a qualified medical professional responsible for the care of the person who\'s insulin pump this application is paired with?</string>
     <string name="yes_i_am_a_medical_professional">Yes, I am a qualified medical professional responsible for their care</string>
     <string name="are_you_absolutely_sure_activate">Are you absolutely sure you wish to activate the Insulin service and that you fully understand what this does?</string>
     <string name="br_block_formatter">%1$s - %2$s</string>
@@ -142,4 +142,5 @@
     <string name="set_firewall_password">Set Firewall Password</string>
     <string name="test">Test</string>
     <string name="password_set">Password Set!</string>
+    <string name="ask_approval_description_message_format"><![CDATA[Ask approval when exceeding {0, choice,0#any request|0<{0, number,#.##} units|1#1 unit|1<{0, number,#.##} units} within {1} {1, choice, 1#\'{2, choice,60000#Minute|3600000#Hour|86400000#Day}\'|1<\'{2, choice,60000#Minutes|3600000#Hours|86400000#Days}\'}]]></string>
 </resources>
